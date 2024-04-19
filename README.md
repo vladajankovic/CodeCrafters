@@ -1,2 +1,2 @@
 # CodeCrafters
-CodeCrafters courses tasks
+My solutions for the CodeCrafters courses :D
