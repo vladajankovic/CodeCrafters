@@ -2,12 +2,13 @@ import socket
 import threading
 import argparse
 import os
+import gzip
 
 def handle_request(client_socket : socket.socket, directory=None):
     data = client_socket.recv(1024).decode()
     data = data.split("\r\n")
 
-    startline = data[0].split(" ")
+    startline = data[0].split()
     method = startline[0]
     path = startline[1]
     http_version = startline[2]
@@ -18,7 +19,19 @@ def handle_request(client_socket : socket.socket, directory=None):
         
         elif path[:6] == '/echo/':
             text = path[6:]
-            client_socket.send(f'{http_version} 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(text)}\r\n\r\n{text}'.encode())
+            found = False
+            for d in data:
+                if d == "":
+                    continue
+                d = d.split(maxsplit=1)
+                if d[0] == "Accept-Encoding:":
+                    if "gzip" in d[1].split(", "):
+                        text = gzip.compress(text.encode())
+                        client_socket.send(f'{http_version} 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: {len(text)}\r\n\r\n'.encode() + text)
+                        found = True
+                    break
+            if not found:
+                client_socket.send(f'{http_version} 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(text)}\r\n\r\n{text}'.encode())
         
         elif path == '/user-agent':  
             useragent = data[2].split()[1]
